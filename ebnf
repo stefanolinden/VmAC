@@ -1,0 +1,81 @@
+program        = { top_stmt } ;
+
+top_stmt       = var_decl
+               | preset_decl
+               | schedule_block
+               | period_block
+               | immediate_seq
+               | cond_stmt
+               | repeat_block
+               | while_block ;
+
+; ---------- VARIÁVEIS ----------
+var_decl       = "salvar" INT "como" IDENT ";" ;
+valor          = INT | IDENT ;
+
+; ---------- PRESETS ----------
+preset_decl    = "preset" IDENT "{" action_seq "}" ;
+preset_call    = "usar" IDENT ";" ;
+
+; ---------- BLOCOS DE TEMPO ----------
+schedule_block = "as" time "{" action_or_preset "}" ;
+period_block   = "das" time "ate" time "{" action_or_preset "}" ;
+
+; pode ser bloco de ações (que começa com ligar ar) ou um preset com cauda
+action_or_preset = action_seq | ( preset_call { extra_stmt } ) ;
+
+; ---------- AÇÕES ----------
+action_seq     = ligar_stmt
+                 [ modo_stmt ] [ vento_stmt ] [ dur_stmt ]
+                 { extra_stmt } ;
+
+ligar_stmt     = "ligar" "ar" valor ";" ;
+modo_stmt      = "modo" modo ";" ;
+vento_stmt     = "vento" vento ";" ;
+dur_stmt       = "por" valor unidade ";" ;     
+extra_stmt     = esperar_stmt | desligar_stmt ;
+
+esperar_stmt   = "esperar" INT unidade ";" ;
+desligar_stmt  = "desligar" ";" ;
+
+; ---------- CONDICIONAIS ----------
+cond_stmt      = "se" cond "entao" cond_target [ "senao" cond_target ] ;
+cond_target    = block_or_call | simple_stmt ;
+
+block_or_call  = "{" first_then_tail "}" | ( preset_call { extra_stmt } ) ;
+simple_stmt    = preset_call | ligar_stmt | esperar_stmt | desligar_stmt ;
+
+; garante a regra “ligar/usar primeiro, depois extras”
+first_then_tail = action_seq | ( preset_call { extra_stmt } ) ;
+
+; ---------- LOOPS ----------
+repeat_block   = "repetir" INT "{" loop_body "}" ;
+while_block    = "enquanto" cond "{" loop_body "}" ;
+loop_body      = first_then_tail | cond_stmt ;
+
+; ---------- EXPRESSÕES / CONDIÇÕES ----------
+cond           = expr relop expr
+               | "(" cond ")"
+               | cond "e" cond
+               | cond "ou" cond ;
+
+expr           = valor | sensor | "(" expr ")"
+               | expr ("+" | "-" | "*" | "/") expr ;
+
+relop          = "==" | "!=" | "<" | "<=" | ">" | ">=" ;
+
+sensor         = "temp" | "temp_sala" | "hora" | "min" ;
+
+; ---------- LÉXICO ----------
+modo           = "cool" | "heat" | "auto" | "fan" ;
+vento          = "baixo" | "medio" | "alto" | "auto" ;
+unidade        = "min" | "h" ;
+
+time           = HH ":" MM | HH "h" MM ;
+HH             = INT ;
+MM             = INT ;
+
+IDENT          = letter { letter | digit | "_" } ;
+INT            = digit { digit } ;
+letter         = "A".."Z" | "a".."z" ;
+digit          = "0".."9" ;
